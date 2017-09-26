@@ -1,0 +1,88 @@
+---
+title: "Natural Language processing of Wikipedia Data (Tata Group)"
+author: "Rajiv"
+date: "27 November 2016"
+output: html_document
+---
+
+NLP 
+
+## Step - 1: Selecting a Company
+
+
+**In here my company of interest will be: Tata Group** 
+
+## step - 2: Scraping the Wiki page of the comapny.
+
+We are loading the necessary packages for webscraping and for Basic NLP: *rvest, NLP, openNLP, ggmap, rworldamp* 
+
+```{r Loading the Packages, include=FALSE}
+library(rvest)
+library(NLP)
+library(openNLP)
+library(ggmap)
+library(rworldmap)
+```
+
+Scraping the Wiki page of Tata Group.
+```{r scraping wiki page}
+page = read_html('https://en.wikipedia.org/wiki/Tata_Group')
+text = html_text(html_nodes(page,'p'))
+text = text[text != ""]
+text = gsub("\\[[0-9]]|\\[[0-9][0-9]]|\\[[0-9][0-9][0-9]]","",text)
+text = paste(text,collapse = " ") 
+text = as.String(text)
+```
+
+Text that is scraped is also displayed below.
+```{r text}
+writeLines(text)
+```
+
+## Step - 3: Persons and Locations mentioned in the page
+
+```{r Scraping person and people}
+t = Sys.time()
+sent_annot = Maxent_Sent_Token_Annotator()
+word_annot = Maxent_Word_Token_Annotator()
+loc_annot = Maxent_Entity_Annotator(kind = "location")
+person_ann <- Maxent_Entity_Annotator(kind = "person")
+annot.l1 = NLP::annotate(text, list(sent_annot,word_annot,loc_annot,person_ann))
+k <- sapply(annot.l1$features, `[[`, "kind")
+coke_locations = text[annot.l1[k == "location"]]
+coke_persons = text[annot.l1[k == "person"]]
+Sys.time() - t
+```
+
+All the Person names that are mentioned in the page for this company
+```{r person names}
+coke_persons
+```
+
+All Location Names that were mentioned in the page
+```{r location names}
+coke_locations = unique(coke_locations)
+coke_locations
+```
+
+##Step - 4: Plotting locations on the map
+
+The Locations mentioned in the company page are plotted on a map.
+```{r plotting map, message=FALSE, warning=FALSE}
+t = Sys.time()
+all_places_geocoded <- geocode(coke_locations)
+#all_places_geocoded 
+newmap <- getMap(resolution = "high")
+plot(newmap,asp = 1)
+points(all_places_geocoded$lon, all_places_geocoded$lat, col = "red", cex = 1.2, pch = 19)
+Sys.time() - t
+```
+
+## Step - 5: Observations
+
+From my Observations i can see that places like Mumbai, Maharastra, Kerala, Odisha etc.., are not recognized by the system.
+
+Names like Ratan Tata, Narendra Modi etc.., were recognized by the system. But the Founder Jamsetji Tata, ex - ceo Cyrus Misty and many other indian names were not recognized by the NLP system.
+
+Though Tata Group is an well renowened company all over the world, the page dosent seem to contain much information. It gives us only few names and places from the group's wiki page.
+
